@@ -1,0 +1,14 @@
+[project]
+name = "franchise-fruns"
+version = "0.1.0"
+description = "Match franchise names to FRUNS identifiers"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.0",
+    "rapidfuzz>=3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
