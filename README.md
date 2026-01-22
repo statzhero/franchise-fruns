@@ -175,7 +175,7 @@ Manual mappings that convert name variants or misspellings to a unified name. Th
 | `name_harmonized` | Unified name to use for matching |
 
 > [!NOTE] 
-Rows mapping to `NA` represent generic names (e.g., "pizza", "plumber") that would produce false positives.
+> Rows mapping to `NA` represent generic names (e.g., "pizza", "plumber") that would produce false positives.
 
 ### publicly-traded-franchisors-fruns.csv
 
