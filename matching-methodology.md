@@ -8,7 +8,8 @@ This document describes how franchise names are matched to FRUNS identifiers. Th
 
 **harmonize-names.csv** provides mappings for known name variants and intentional exclusions.
 
-> \[!NOTE\] We map generic names (e.g., "pizza", "plumber"), and unknown franchises, to `NA` to avoid false positives.
+> [!NOTE] 
+> We map generic names (e.g., "pizza", "plumber"), and unknown franchises, to `NA` to avoid false positives.
 
 ## The three-step matching process
 
