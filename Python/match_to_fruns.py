@@ -31,7 +31,6 @@ def load_fruns_data() -> pd.DataFrame:
             "franchisor_sanitized": "str",
             "naics_code": "str",
             "naics_description": "str",
-            "brand_name_sanitized_alt": "str",
         },
     )
 
