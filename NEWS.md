@@ -1,22 +1,29 @@
 # franchise-fruns News
 
+## 2026-01-30
+
+### New name mapping added to `harmonize-names.csv`
+
+| Former Name               | Current Name                  | Type  |
+|---------------------------|-------------------------------|-------|
+| Rainbow Station           | Leafspring School             | fka   |
+| Huntington School Services| Huntington Learning Center    | aka   |
+| CHI-CHI'S                 | Jack in the Box               | fka   |
+
 ## 2026-01-22
 
 ### New name mappings added to `harmonize-names.csv`
 
-| Former Name               | Current Name                  | Type  |
-|---------------------------|-------------------------------|-------|
-| IRR-Residential           | Accurity Valuation            | fka   |
-| Top Dog Daycare           | Canine Campus                 | fka   |
-| JJ's Candy Em             | Schwietert's Cones & Candy    | fka   |
-| Sitters Etc.              | SEI Healthcare Services       | fka   |
-| Lodie's Shaved Ice Shack  | Summer Snow                   | fka   |
-| Look Good Naked           | Trumi                         | fka   |
-| Johnny Brusco's           | Johnny's New York Style Pizza | aka   |
-| Conroy's                  | 1-800-Flowers.com             | alias |
-| Rainbow Station           | Leafspring School             | fka   |
-| Huntington School Services| Huntington Learning Center    | aka   |
-| CHI-CHI'S                 | Jack in the Box               | fka   |
+| Former Name              | Current Name                  | Type  |
+|--------------------------|-------------------------------|-------|
+| IRR-Residential          | Accurity Valuation            | fka   |
+| Top Dog Daycare          | Canine Campus                 | fka   |
+| JJ's Candy Em            | Schwietert's Cones & Candy    | fka   |
+| Sitters Etc.             | SEI Healthcare Services       | fka   |
+| Lodie's Shaved Ice Shack | Summer Snow                   | fka   |
+| Look Good Naked          | Trumi                         | fka   |
+| Johnny Brusco's          | Johnny's New York Style Pizza | aka   |
+| Conroy's                 | 1-800-Flowers.com             | alias |
 
 ## 2025-12-20
 
