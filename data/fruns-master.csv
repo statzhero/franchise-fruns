@@ -1770,7 +1770,7 @@ fruns,last_avail_year,brand_name,brand_name_sanitized,franchisor,franchisor_sani
 15490,2023,Corporate Cleaning Group,corporate cleaning,Corporate Cleaning Group Franchise Systems LLC,corporate cleaning group franchise,561720,Janitorial Services
 10967,1999,CORPORATE MINUTES MADE,corporate minutes made,"Corporate Minutes Made Franchising, Inc.",corporate minutes made,541214,Payroll Services
 17143,2023,CorporateConnections,corporateconnections,"Corporate Connections Franchising, LLC",corporate connections,541613,Marketing Consulting Services
-10968,2023,Corvus Janitorial Systems,corvus janitorial,"BBI Holdings, LLC",douglas ventures,561720,Janitorial Services
+10968,2023,Corvus Janitorial Systems,corvus janitorial,"BBI Holdings, LLC",bbi holdings,561720,Janitorial Services
 10969,2019,Cosi,cosi,Cosi Franchise Holdings LLC,cosi franchise holdings,722511,Full-Service Restaurants
 15880,2014,CosmaLite,cosmalite,"CosmaLite Franchising, LLC",cosmalite,621111,Offices of Physicians (except Mental Health Specialists)
 19186,2023,Cosmic Veggies,cosmic veggies,"DYV Franchising, LLC",dyv franchising,722515,Snack and Nonalcoholic Beverage Bars
@@ -1797,7 +1797,7 @@ fruns,last_avail_year,brand_name,brand_name_sanitized,franchisor,franchisor_sani
 10986,2017,Coustic-Glo,coustic glo,Coustic-Glo International,coustic glo,236118,Residential Remodelers
 19294,2023,Couture Med Spa,couture med spa,"Couture Med Spa Franchising, LLC",couture med spa,812199,Other Personal Care Services
 19014,2023,The Coven,coven,"The Coven Franchising, LLC",coven,531120,Lessors of Nonresidential Buildings (except Miniwarehouses)
-10987,2023,Coverall,coverall,"Coverall North America, Inc.",northwest,561720,Janitorial Services
+10987,2023,Coverall,coverall,"Coverall North America, Inc.",coverall,561720,Janitorial Services
 18746,2022,The Covery,covery,"R-Wellness, LLC",r wellness,446199,All Other Health and Personal Care Stores
 15685,2021,Cowboy Chicken,cowboy chicken,"Cowboy Chicken Franchising, LP",cowboy chicken,722513,Limited-Service Restaurants
 10988,2009,COWGIRL CAFE,cowgirl cafe,Cowgirl Cafe Franchise Corporation,cowgirl cafe,722511,Full-Service Restaurants
@@ -5644,7 +5644,7 @@ fruns,last_avail_year,brand_name,brand_name_sanitized,franchisor,franchisor_sani
 19333,2023,Preservan,preservan,"Preservan Franchising, LLC",preservan,562910,Remediation Services
 19221,2023,PRESERVE SERVICES,preserve services,"PRESERVE SERVICES Franchise Systems, LLC",preserve services,238320,Painting and Wall Covering Contractors
 16295,2021,Presidio Home Care,presidio home care,Presidio Home Care Franchising LLC,presidio home care,621610,Home Health Care Services
-17651,2023,Presotea,presotea,Kee & Associates International LLC,presotea,722515,Snack and Nonalcoholic Beverage Bars
+17651,2023,Presotea,presotea,Kee & Associates International LLC,kee associates,722515,Snack and Nonalcoholic Beverage Bars
 17632,2020,Press Waffle Co.,press waffle,Press Waffle Company Franchising LLC,press waffle company,722515,Snack and Nonalcoholic Beverage Bars
 12987,2012,Pressed 4 Time (now under Martinizing Dry Cleaning),pressed 4 time,"Pressed 4 Time, Inc.",pressed 4 time,812320,Drycleaning and Laundry Services (except Coin-Operated)
 16431,2015,Prestmore Academy,prestmore academy,"Prestmore Academy Franchising, LLC",prestmore academy,611110,Elementary and Secondary Schools
@@ -6556,7 +6556,7 @@ fruns,last_avail_year,brand_name,brand_name_sanitized,franchisor,franchisor_sani
 18398,2023,Sonesta Simply Suites,sonesta simply suites,Sonesta RL Hotels Franchising Inc.,sonesta rl hotels,721110,Hotels (except Casino Hotels) and Motels
 16536,2019,Songs for Seeds,songs for seeds,"Apple Seeds Franchising, LLC",apple seeds,611610,Fine Arts Schools
 13545,2023,Sonic,sonic,Sonic Franchising LLC,sonic,722513,Limited-Service Restaurants
-13546,2022,Sonitrol,sonitrol,"Sonitrol Security, Inc.",stanley convergent security solutions,561621,Security Systems Services (except Locksmiths)
+13546,2022,Sonitrol,sonitrol,"Sonitrol Security, Inc.",sonitrol security,561621,Security Systems Services (except Locksmiths)
 13547,2014,SONNY BRYAN'S SMOKEHOUSE,sonny bryans smokehouse,"Sonny Bryan's Franchise System, LLC",sonny bryans,722511,Full-Service Restaurants
 13549,2023,Sonny's BBQ,sonnys bbq,Sonny's Franchise Company,sonnys,722511,Full-Service Restaurants
 13550,2010,SONOMA CHICKEN COOP,sonoma chicken coop,"Sonoma Food Group, LLC",sonoma food group,722410,Drinking Places (Alcoholic Beverages)
@@ -6738,7 +6738,7 @@ fruns,last_avail_year,brand_name,brand_name_sanitized,franchisor,franchisor_sani
 13650,2002,STRAIGHT SHOT EXPRESS,straight shot express,"P & D, Ltd.",p d ltd,561499,All Other Business Support Services
 16031,2016,StraightSource,straightsource,"StraightSource Franchising, LLC",straightsource,561499,All Other Business Support Services
 13651,2004,STRATIS BUSINESS CENTERS,stratis business centers,"Stratis Business Centers, Inc.",stratis business centers,561499,All Other Business Support Services
-13652,2023,Stratus Building Solutions,stratus building solutions,Beachtime Ventures Inc,stratus building solutions,561720,Janitorial Services
+13652,2023,Stratus Building Solutions,stratus building solutions,Beachtime Ventures Inc,beachtime ventures,561720,Janitorial Services
 13653,2022,Straw Hat Pizza,straw hat pizza,"Straw Hat Restaurants, Inc.",straw hat restaurants,722513,Limited-Service Restaurants
 17188,2020,Street Churros,street churros,"Streetchurros USA, Inc.",streetchurros,722515,Snack and Nonalcoholic Beverage Bars
 13654,2023,Street Corner,street corner,"McColla Enterprises, Ltd.",mccolla enterprises,451212,News Dealers and Newsstands
@@ -6842,7 +6842,7 @@ fruns,last_avail_year,brand_name,brand_name_sanitized,franchisor,franchisor_sani
 17324,2023,Superior Play Systems,superior play,Superior Play Franchising LLC,superior play,451110,Sporting Goods Stores
 13712,2023,Superior Walls,superior walls,"Superior Walls of America, Ltd.",superior walls america,238110,Poured Concrete Foundation and Structure Contractors
 13713,2017,Superior Wash,superior wash,"Tri-County Mobile Wash, Inc",tri county mobile wash,811192,Car Washes
-13715,2019,SuperShuttle,supershuttle,"Cloud 9 Shuttle, Inc.",supershuttle los angeles,485999,All Other Transit and Ground Passenger Transportation
+13715,2019,SuperShuttle,supershuttle,"Cloud 9 Shuttle, Inc.",cloud 9 shuttle,485999,All Other Transit and Ground Passenger Transportation
 13716,2023,SuperSlow Zone,superslow zone,"Super Slow Zone, LLC",super slow zone,713940,Fitness and Recreational Sports Centers
 13718,2007,SUPPER THYME USA,supper thyme,"Supper Thyme USA Franchise Services, LLC",supper thyme usa franchise services,445299,All Other Specialty Food Stores
 17456,2023,Supply Pointe,supply pointe,"Supply Pointe Franchising, LLC",supply pointe,488510,Freight Transportation Arrangement
@@ -7444,7 +7444,7 @@ fruns,last_avail_year,brand_name,brand_name_sanitized,franchisor,franchisor_sani
 16822,2017,ValuMaxx Mattress,valumaxx mattress,Factory Direct Mattress Franchise Corp.,factory direct mattress,442110,Furniture Stores
 14152,2023,Valvoline Instant Oil Change,valvoline instant oil change,"Valvoline Instant Oil Change Franchising, Inc.",valvoline instant oil change,811191,Automotive Oil Change and Lubrication Shops
 18496,2021,VanGo Medical Spa,vango medical spa,The Destinations Franchise Corporation,destinations,621399,Offices of All Other Miscellaneous Health Practitioners
-14153,2023,Vanguard Cleaning Systems,vanguard cleaning,"All One Cleaning Services, Inc.",saint croix management incorporated,561720,Janitorial Services
+14153,2023,Vanguard Cleaning Systems,vanguard cleaning,"All One Cleaning Services, Inc.",all one cleaning services,561720,Janitorial Services
 18616,2023,Vanity Fur Mobile Pet Salon,vanity fur mobile pet salon,"Vanity Fur Franchising, LLC",vanity fur,812910,Pet Care (except Veterinary) Services
 14154,2018,Vapiano,vapiano,"VAP Franchising, LLC",vap franchising,722410,Drinking Places (Alcoholic Beverages)
 16909,2019,Vapor Galleria,vapor galleria,"Vapor Galleria Group, LLC",vapor galleria group,453998,All Other Miscellaneous Store Retailers (except Tobacco Stores)
@@ -7561,7 +7561,7 @@ fruns,last_avail_year,brand_name,brand_name_sanitized,franchisor,franchisor_sani
 17580,2019,Wafflejack,wafflejack,Wafflejack Development LLC,wafflejack development,722513,Limited-Service Restaurants
 15060,2014,Waffy's,waffys,"Waffy's Franchising, LLC",waffys,722513,Limited-Service Restaurants
 14218,2023,Wag N Wash,wag n wash,"WNW Franchising, LLC",wnw franchising,453910,Pet and Pet Supplies Stores
-16520,2023,Wahlburgers,wahlburgers,NativeWahl LLC,wahlburgers,722511,Full-Service Restaurants
+16520,2023,Wahlburgers,wahlburgers,NativeWahl LLC,nativewahl,722511,Full-Service Restaurants
 14220,2023,Wahoo's Fish Taco,wahoos fish taco,"Wahoo's Fish Taco, LLC",wahoos fish taco,722513,Limited-Service Restaurants
 17656,2023,Waikomo Shave Ice,waikomo shave ice,"Locococo Hawaii Franchise, LLC",locococo hawaii,722330,Mobile Food Services
 14514,2015,The Waiting Game,waiting game,"Waiting Game Publications, LLC",waiting game publications,511120,Periodical Publishers
@@ -7627,7 +7627,7 @@ fruns,last_avail_year,brand_name,brand_name_sanitized,franchisor,franchisor_sani
 15745,2014,Wedding Wagon,wedding wagon,"WWFC, LLC",wwfc,812990,All Other Personal Services
 18528,2023,The Wee Chippy,wee chippy,"The Wee Chippy Franchise System, LLC",wee chippy,722513,Limited-Service Restaurants
 15504,2017,Wee Little Arts,wee little arts,"Wee Little Arts, Inc.",wee little arts,611610,Fine Arts Schools
-14244,2023,Weed Man,weed man,"M.I.K. Holding, L.L.C.",turf holdings,561710,Exterminating and Pest Control Services
+14244,2023,Weed Man,weed man,"M.I.K. Holding, L.L.C.",mik holding,561710,Exterminating and Pest Control Services
 14245,2011,WEGROW GARDEN SUPPLY,wegrow garden supply,"weGrow Enterprises, Inc.",wegrow enterprises,453998,All Other Miscellaneous Store Retailers (except Tobacco Stores)
 14246,2023,Weichert,weichert,"Weichert Real Estate Affiliates, Inc.",weichert real estate affiliates,531210,Offices of Real Estate Agents and Brokers
 18641,2023,Weighless MD and Wellness,weighless md wellness,"Weighless MD Franchises, LLC",weighless md,621399,Offices of All Other Miscellaneous Health Practitioners
@@ -7824,7 +7824,7 @@ fruns,last_avail_year,brand_name,brand_name_sanitized,franchisor,franchisor_sani
 14371,2023,YESCO,yesco,YESCO Franchising LLC,yesco,561790,Other Services to Buildings and Dwellings
 18220,2022,Yesvendors,yesvendors,KBC Franchise Holdings LLC,kbc franchise holdings,238290,Other Building Equipment Contractors
 14372,2023,Yeung's Lotus Express,yeungs lotus express,Yeung's Lotus Express Franchise Corp.,yeungs lotus express,722513,Limited-Service Restaurants
-17454,2023,Yi Fang Taiwan Fruit Tea,yi fang taiwan fruit tea,All Win II Inc.,inkism,722515,Snack and Nonalcoholic Beverage Bars
+17454,2023,Yi Fang Taiwan Fruit Tea,yi fang taiwan fruit tea,All Win II Inc.,all win ii,722515,Snack and Nonalcoholic Beverage Bars
 17083,2018,Yi Mei,yi mei,"Yi Mei Franchising, Inc.",yi mei,722513,Limited-Service Restaurants
 14373,2021,YNot Italian,ynot italian,YNot Italian Franchise LLC,ynot italian,722511,Full-Service Restaurants
 16243,2014,Yo-Good,yo good,Fresh & Healthy Brands International Ltd.,fresh healthy brands,445299,All Other Specialty Food Stores
