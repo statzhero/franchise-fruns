@@ -1,5 +1,16 @@
 # franchise-fruns News
 
+## 2026-02-02
+
+### New name mapping added to `harmonize-names.csv`
+
+| Former Name               | Current Name                  | Type  |
+|---------------------------|-------------------------------|-------|
+| Rainbow Station           | Leafspring School             | fka   |
+| Huntington School Services| Huntington Learning Center    | aka   |
+
+Reconsidered an entry for Chi-Chi's, a franchise that's currently listed as a Jack in the Box brand (TBC).
+
 ## 2026-01-22
 
 ### New name mappings added to `harmonize-names.csv`
