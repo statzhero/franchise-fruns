@@ -1,5 +1,17 @@
 # franchise-fruns News
 
+## 2026-02-05
+
+### New name mappings added to `harmonize-names.csv`
+
+| Former Name               | Current Name                  | Type  |
+|---------------------------|-------------------------------|-------|
+| Value Place               | Woodspring Suites             | fka   |
+
+Subtracted "Value Place" from `fruns-master.csv` in accordance with the rebranding that underwent in 2015 
+
+Likewise added a substantial number of "aka"s to the `harmonize-names.csv` that do not have significant repurcussions.
+
 ## 2026-02-02
 
 ### New name mapping added to `harmonize-names.csv`
