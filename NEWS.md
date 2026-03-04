@@ -1,5 +1,17 @@
 # franchise-fruns News
 
+## 2026-03-04
+
+### New name mappings added to `harmonize-names.csv`
+
+| Former Name               | Current Name                  | Type  |
+|---------------------------|-------------------------------|-------|
+| Salon Plaza               | My Salon Suite                | aka   |
+
+Subtracted "Salon Plaza" from `fruns-master.csv` as it is always in the same FDD as "My Salon Suite".
+
+Added a substantial number of "aka"s to `harmonize-names.csv` that do not have significant repercussions.
+
 ## 2026-02-05
 
 ### New name mappings added to `harmonize-names.csv`
