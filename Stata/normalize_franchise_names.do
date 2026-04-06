@@ -51,7 +51,7 @@ program define sanitize_name
         replace `generate' = ustrregexra(`generate', "['\u2018\u2019\u201A\u201B\u02BC\u02B9`\u00B4,.]", "")
 
         // Other non-alphanumeric characters become spaces
-        replace `generate' = ustrregexra(`generate', "[^a-zA-Z0-9 ]", " ")
+        replace `generate' = ustrregexra(`generate', "[^a-zA-Z0-9]", " ")
         replace `generate' = strtrim(stritrim(`generate'))
 
         // Save normalized for restoration
@@ -130,6 +130,8 @@ program define sanitize_name
         // Restoration if result too short but source was long enough
         // Order: franchise -> org -> geo -> corp (skip stopwords)
         // Match whole words anywhere (not just trailing) using \b word boundaries
+        // After each category, remove matched terms from normalized to prevent
+        // double-counting (mirrors R and Python behavior)
         if `minchars' > 0 {
             // Franchise terms
             foreach term in franchise franchises franchising franchisor {
@@ -137,12 +139,18 @@ program define sanitize_name
                     if strlen(`generate') < `minchars' & strlen(`normalized') >= `minchars' ///
                     & ustrregexm(`normalized', "\b`term'\b")
             }
+            replace `normalized' = ustrregexra(`normalized', "\b(franchise|franchises|franchising|franchisor|license program|operator program)$", "")
+            replace `normalized' = strtrim(stritrim(`normalized'))
+
             // Org terms
             foreach term in system systems holding holdings enterprise enterprises {
                 replace `generate' = `generate' + " `term'" ///
                     if strlen(`generate') < `minchars' & strlen(`normalized') >= `minchars' ///
                     & ustrregexm(`normalized', "\b`term'\b")
             }
+            replace `normalized' = ustrregexra(`normalized', "\b(system|systems|holding|holdings|enterprise|enterprises)$", "")
+            replace `normalized' = strtrim(stritrim(`normalized'))
+
             // Geo terms (order longer before shorter to prefer "usa" over "us")
             replace `generate' = `generate' + " north america" ///
                 if strlen(`generate') < `minchars' & strlen(`normalized') >= `minchars' ///
@@ -159,6 +167,9 @@ program define sanitize_name
             replace `generate' = `generate' + " us" ///
                 if strlen(`generate') < `minchars' & strlen(`normalized') >= `minchars' ///
                 & ustrregexm(`normalized', "\bus\b")
+            replace `normalized' = ustrregexra(`normalized', "\b(us|usa|north america|intl|international)$", "")
+            replace `normalized' = strtrim(stritrim(`normalized'))
+
             // Corp suffixes (restored last)
             foreach suffix in inc incorporated llc ltd limited lp co corp corporation company spv spe {
                 replace `generate' = `generate' + " `suffix'" ///
@@ -218,6 +229,10 @@ program define harmonize_name
         // Merge using frlink/frget (modern frame-based approach)
         frlink m:1 _h_key, frame(_harmonize_temp)
         frget _h_value, from(_harmonize_temp)
+
+        // NA in CSV is read as literal "NA" by stringcols(_all).
+        // Treat "NA" as intentional blocking (same as empty).
+        replace _h_value = "" if _h_value == "NA"
 
         // Apply harmonization logic:
         // - Matched with non-empty value: use harmonized name

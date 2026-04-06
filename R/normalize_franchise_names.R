@@ -42,7 +42,8 @@ sanitize_name <- function(x, min_chars = 4) {
   x <- stringr::str_remove_all(x, "['\u2018\u2019\u201A\u201B\u02BC\u02B9`\u00B4,.]")
 
   # Other non-alphanumeric characters become spaces
-  x <- stringr::str_replace_all(x, "[^[:alnum:]]", " ")
+  # Use ASCII-explicit class (transliteration already converted to ASCII)
+  x <- stringr::str_replace_all(x, "[^a-zA-Z0-9]", " ")
   x <- stringr::str_squish(x)
 
   normalized <- x
@@ -112,10 +113,20 @@ restore_until_min_chars <- function(normalized, current, min_chars) {
 # Harmonization ----------------------------------------------------------------
 
 #' Apply harmonization mappings to sanitized names
+#'
+#' Names mapped to NA in the harmonize file are intentional exclusions
+#' (e.g., "food", "plumber") — they are mapped to empty string to block
+#' matching. Names not in the map are kept as-is.
 harmonize_name <- function(x, harmonize_map) {
+  # Replace NA mappings with "" so we can distinguish "blocked" from "not found"
+  harmonize_map$name_harmonized[is.na(harmonize_map$name_harmonized)] <- ""
   lookup <- stats::setNames(
     harmonize_map$name_harmonized,
     harmonize_map$franchise
   )
-  dplyr::coalesce(lookup[x], x)
+  matched <- lookup[x]
+  # Not found in map → NA from lookup → keep original
+  # Found with "" → blocked → keep ""
+  # Found with value → use mapped value
+  dplyr::if_else(is.na(matched), x, matched)
 }

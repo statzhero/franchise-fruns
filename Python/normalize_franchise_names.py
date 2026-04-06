@@ -35,9 +35,23 @@ TERM_PATTERNS = {
 RESTORE_ORDER = ["franchise", "org", "geo", "corp"]
 
 
+# Characters that NFD decomposition does not handle (ø → o, ß → ss, etc.)
+# Matches R's stringi::stri_trans_general("Latin-ASCII") and Stata's ustrto(, "ascii", 2)
+_TRANSLITERATE_MAP = str.maketrans(
+    {
+        "æ": "ae", "Æ": "AE", "œ": "oe", "Œ": "OE",
+        "ø": "o", "Ø": "O", "ß": "ss", "đ": "d", "Đ": "D",
+        "ł": "l", "Ł": "L", "þ": "th", "Þ": "TH",
+        "ð": "d", "Ð": "D",
+    }
+)
+
+
 def _transliterate_to_ascii(text: str) -> str:
-    """Transliterate accented characters to ASCII (café → cafe)."""
-    # Normalize to NFD (decompose accents), then remove combining marks
+    """Transliterate accented characters to ASCII (café → cafe, häagen → haagen)."""
+    # First handle special ligatures/letters that NFD cannot decompose
+    text = text.translate(_TRANSLITERATE_MAP)
+    # Then decompose remaining accented chars and strip combining marks
     normalized = unicodedata.normalize("NFD", text)
     return "".join(c for c in normalized if unicodedata.category(c) != "Mn")
 
@@ -128,6 +142,10 @@ def _restore_until_min_chars(normalized: str, current: str, min_chars: int) -> s
 def harmonize_name(x: str | pd.Series, harmonize_map: pd.DataFrame) -> str | pd.Series:
     """Apply harmonization mappings to sanitized names.
 
+    Names mapped to NA in the harmonize file are intentional exclusions
+    (e.g., "food", "plumber") -- they are mapped to empty string to block
+    matching. Names not in the map are kept as-is.
+
     Args:
         x: A string or pandas Series of sanitized names.
         harmonize_map: DataFrame with 'franchise' and 'name_harmonized' columns.
@@ -135,8 +153,17 @@ def harmonize_name(x: str | pd.Series, harmonize_map: pd.DataFrame) -> str | pd.
     Returns:
         Name(s) with harmonization mappings applied.
     """
-    lookup = dict(zip(harmonize_map["franchise"], harmonize_map["name_harmonized"], strict=True))
+    # Replace NA mappings with "" so we can distinguish "blocked" from "not found"
+    hmap = harmonize_map.copy()
+    hmap["name_harmonized"] = hmap["name_harmonized"].fillna("")
+    lookup = dict(zip(hmap["franchise"], hmap["name_harmonized"], strict=True))
 
     if isinstance(x, pd.Series):
-        return x.map(lookup).fillna(x).where(x.notna(), x)
-    return lookup.get(x, x) if x and not pd.isna(x) else x
+        mapped = x.map(lookup)
+        # Not found in map → NaN from .map() → keep original
+        # Found with "" → blocked → keep ""
+        # Found with value → use mapped value
+        return mapped.where(mapped.notna(), x).where(x.notna(), x)
+    if x is None or pd.isna(x):
+        return x
+    return lookup.get(x, x)

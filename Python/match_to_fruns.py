@@ -227,7 +227,7 @@ def _match_fuzzy(
             distance = 1 - score  # Convert similarity back to distance
 
             # Round to 4 decimal places for consistent comparison with R
-            if round(distance, 4) < max_distance:
+            if round(distance, 4) <= max_distance:
                 best_matches.append(
                     {
                         "_name_harmonized": name,
