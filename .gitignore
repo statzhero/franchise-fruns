@@ -10,6 +10,9 @@
 docs/
 plans/
 
+__pycache__/
+.pytest_cache/
+
 .positron
 .vscode
 .claude

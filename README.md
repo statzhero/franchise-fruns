@@ -190,6 +190,14 @@ Links publicly traded companies to their franchise brands. Use this to connect f
 
 Multi-brand franchisors appear as multiple rows (e.g., Anywhere Real Estate owns Century 21, Coldwell Banker, and Better Homes and Gardens Real Estate).
 
+## Tests
+
+The test suite uses pytest and checks both Python correctness and cross-language agreement with R (via subprocess calls to `Rscript`).
+
+``` bash
+uv run --project Python pytest
+```
+
 ## Contributing
 
 Contributions are welcome:
