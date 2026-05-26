@@ -63,11 +63,11 @@ match_to_fruns(franchises, franchise_name, verbose = FALSE, keep_details = TRUE)
 ### Python
 
 ``` python
-# pip install pandas rapidfuzz
-import pandas as pd
+# pip install polars rapidfuzz
+import polars as pl
 from match_to_fruns import match_to_fruns
 
-franchises = pd.DataFrame({
+franchises = pl.DataFrame({
     "franchise_name": [
         "1-800-Flowers.com, Inc.",
         "Conroy's",
