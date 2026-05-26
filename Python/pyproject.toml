@@ -8,6 +8,13 @@ dependencies = [
     "rapidfuzz>=3.0",
 ]
 
+[tool.setuptools]
+py-modules = ["match_to_fruns", "normalize_franchise_names"]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
