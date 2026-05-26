@@ -1,10 +1,9 @@
 """Shared fixtures for franchise-fruns tests."""
 
 import subprocess
-import sys
 from pathlib import Path
 
-import pandas as pd
+import polars as pl
 import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -18,21 +17,22 @@ def project_root():
 
 @pytest.fixture
 def fruns_data():
-    return pd.read_csv(
+    return pl.read_csv(
         PROJECT_ROOT / "data" / "fruns-master.csv",
-        dtype={
-            "fruns": "str",
-            "brand_name_sanitized": "str",
-            "franchisor_sanitized": "str",
+        schema_overrides={
+            "fruns": pl.Utf8,
+            "brand_name_sanitized": pl.Utf8,
+            "franchisor_sanitized": pl.Utf8,
         },
     )
 
 
 @pytest.fixture
 def harmonize_map():
-    return pd.read_csv(
+    return pl.read_csv(
         PROJECT_ROOT / "data" / "harmonize-names.csv",
-        dtype={"franchise": "str", "name_harmonized": "str"},
+        schema_overrides={"franchise": pl.Utf8, "name_harmonized": pl.Utf8},
+        null_values="NA",
     )
 
 

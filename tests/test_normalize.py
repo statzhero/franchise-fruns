@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-import pandas as pd
+import polars as pl
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "Python"))
@@ -51,9 +51,9 @@ def test_sanitize_name(input_name, expected):
 
 
 def test_sanitize_name_series():
-    s = pd.Series(["McDonald's, Inc.", "Subway", None])
+    s = pl.Series(["McDonald's, Inc.", "Subway", None])
     result = sanitize_name(s)
-    assert list(result) == ["mcdonalds", "subway", ""]
+    assert result.to_list() == ["mcdonalds", "subway", ""]
 
 
 # -- harmonize_name ------------------------------------------------------------
@@ -61,20 +61,20 @@ def test_sanitize_name_series():
 
 def test_harmonize_blocks_na_entries(harmonize_map):
     """NA mappings in harmonize-names.csv should block matching (return "")."""
-    test = pd.Series(["food", "plumber"])
+    test = pl.Series(["food", "plumber"])
     result = harmonize_name(test, harmonize_map)
-    assert list(result) == ["", ""]
+    assert result.to_list() == ["", ""]
 
 
 def test_harmonize_passes_through_unknown(harmonize_map):
     """Names not in the map should be returned as-is."""
-    test = pd.Series(["unknownfranchise123"])
+    test = pl.Series(["unknownfranchise123"])
     result = harmonize_name(test, harmonize_map)
-    assert list(result) == ["unknownfranchise123"]
+    assert result.to_list() == ["unknownfranchise123"]
 
 
 def test_harmonize_maps_known_variants(harmonize_map):
     """Known variants should map to canonical names."""
-    test = pd.Series(["1800 flowers"])
+    test = pl.Series(["1800 flowers"])
     result = harmonize_name(test, harmonize_map)
-    assert list(result) == ["1 800 flowers"]
+    assert result.to_list() == ["1 800 flowers"]

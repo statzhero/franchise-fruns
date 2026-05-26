@@ -18,7 +18,7 @@ from __future__ import annotations
 import re
 import unicodedata
 
-import pandas as pd
+import polars as pl
 
 # Term patterns for removal ($ = trailing only, matched iteratively)
 # Removal order: stopwords -> corp -> franchise -> org -> geo
@@ -56,24 +56,26 @@ def _transliterate_to_ascii(text: str) -> str:
     return "".join(c for c in normalized if unicodedata.category(c) != "Mn")
 
 
-def sanitize_name(x: str | pd.Series, min_chars: int = 4) -> str | pd.Series:
+def sanitize_name(x: str | pl.Series, min_chars: int = 4) -> str | pl.Series:
     """Normalize franchise name strings for matching.
 
     Args:
-        x: A string or pandas Series of strings to sanitize.
+        x: A string or polars Series of strings to sanitize.
         min_chars: Minimum character length for result. Default is 4.
 
     Returns:
         Sanitized string(s) with normalized whitespace and removed suffixes.
     """
-    if isinstance(x, pd.Series):
-        return x.apply(lambda val: _sanitize_single(val, min_chars))
+    if isinstance(x, pl.Series):
+        return x.map_elements(
+            lambda val: _sanitize_single(val, min_chars), return_dtype=pl.Utf8
+        ).fill_null("")
     return _sanitize_single(x, min_chars)
 
 
 def _sanitize_single(x: str | None, min_chars: int = 4) -> str:
     """Sanitize a single string value."""
-    if x is None or pd.isna(x):
+    if x is None:
         return ""
 
     x = str(x)
@@ -139,7 +141,9 @@ def _restore_until_min_chars(normalized: str, current: str, min_chars: int) -> s
     return current
 
 
-def harmonize_name(x: str | pd.Series, harmonize_map: pd.DataFrame) -> str | pd.Series:
+def harmonize_name(
+    x: str | pl.Series, harmonize_map: pl.DataFrame
+) -> str | pl.Series:
     """Apply harmonization mappings to sanitized names.
 
     Names mapped to NA in the harmonize file are intentional exclusions
@@ -147,23 +151,26 @@ def harmonize_name(x: str | pd.Series, harmonize_map: pd.DataFrame) -> str | pd.
     matching. Names not in the map are kept as-is.
 
     Args:
-        x: A string or pandas Series of sanitized names.
+        x: A string or polars Series of sanitized names.
         harmonize_map: DataFrame with 'franchise' and 'name_harmonized' columns.
 
     Returns:
         Name(s) with harmonization mappings applied.
     """
-    # Replace NA mappings with "" so we can distinguish "blocked" from "not found"
-    hmap = harmonize_map.copy()
-    hmap["name_harmonized"] = hmap["name_harmonized"].fillna("")
-    lookup = dict(zip(hmap["franchise"], hmap["name_harmonized"], strict=True))
+    # Build lookup dict: NA mappings become "" (blocked), missing keys pass through
+    lookup = dict(
+        zip(
+            harmonize_map["franchise"].to_list(),
+            harmonize_map["name_harmonized"].fill_null("").to_list(),
+            strict=True,
+        )
+    )
 
-    if isinstance(x, pd.Series):
-        mapped = x.map(lookup)
-        # Not found in map → NaN from .map() → keep original
-        # Found with "" → blocked → keep ""
-        # Found with value → use mapped value
-        return mapped.where(mapped.notna(), x).where(x.notna(), x)
-    if x is None or pd.isna(x):
+    if isinstance(x, pl.Series):
+        return x.map_elements(
+            lambda v: lookup.get(v, v) if v is not None else v,
+            return_dtype=pl.Utf8,
+        )
+    if x is None:
         return x
     return lookup.get(x, x)

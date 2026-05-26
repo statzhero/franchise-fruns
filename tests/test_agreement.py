@@ -11,7 +11,7 @@ import tempfile
 import textwrap
 from pathlib import Path
 
-import pandas as pd
+import polars as pl
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "Python"))
@@ -50,8 +50,8 @@ HARMONIZE_INPUTS = [
 
 
 def _python_sanitize(inputs: list[str]) -> list[str]:
-    s = pd.Series(inputs)
-    return list(sanitize_name(s))
+    s = pl.Series(inputs)
+    return sanitize_name(s).to_list()
 
 
 def _run_r_with_json(inputs: list[str], r_code_template: str) -> list[str]:
@@ -87,14 +87,15 @@ def _r_sanitize(inputs: list[str]) -> list[str]:
 
 
 def _python_harmonize(inputs: list[str]) -> list[str]:
-    hmap = pd.read_csv(
+    hmap = pl.read_csv(
         Path(__file__).parent.parent / "data" / "harmonize-names.csv",
-        dtype={"franchise": "str", "name_harmonized": "str"},
+        schema_overrides={"franchise": pl.Utf8, "name_harmonized": pl.Utf8},
+        null_values="NA",
     )
-    s = pd.Series(inputs)
+    s = pl.Series(inputs)
     result = harmonize_name(s, hmap)
-    # Normalize NA/NaN to "" for comparison
-    return [v if pd.notna(v) and v != "" else "" for v in result]
+    # Normalize None to "" for comparison
+    return [v if v is not None and v != "" else "" for v in result.to_list()]
 
 
 def _r_harmonize(inputs: list[str]) -> list[str]:

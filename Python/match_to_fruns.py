@@ -7,7 +7,7 @@ sanitization, harmonization, and optional fuzzy matching.
 from pathlib import Path
 from typing import Literal
 
-import pandas as pd
+import polars as pl
 from rapidfuzz import process
 from rapidfuzz.distance import JaroWinkler
 
@@ -17,30 +17,31 @@ from normalize_franchise_names import sanitize_name, harmonize_name
 # Data loading -----------------------------------------------------------------
 
 
-def load_fruns_data() -> pd.DataFrame:
+def load_fruns_data() -> pl.DataFrame:
     """Load FRUNS master data from CSV."""
     data_path = Path(__file__).parent.parent / "data" / "fruns-master.csv"
-    return pd.read_csv(
+    return pl.read_csv(
         data_path,
-        dtype={
-            "fruns": "str",
-            "last_avail_year": "Int64",
-            "brand_name": "str",
-            "brand_name_sanitized": "str",
-            "franchisor": "str",
-            "franchisor_sanitized": "str",
-            "naics_code": "str",
-            "naics_description": "str",
+        schema_overrides={
+            "fruns": pl.Utf8,
+            "last_avail_year": pl.Int64,
+            "brand_name": pl.Utf8,
+            "brand_name_sanitized": pl.Utf8,
+            "franchisor": pl.Utf8,
+            "franchisor_sanitized": pl.Utf8,
+            "naics_code": pl.Utf8,
+            "naics_description": pl.Utf8,
         },
     )
 
 
-def load_harmonize_map() -> pd.DataFrame:
+def load_harmonize_map() -> pl.DataFrame:
     """Load harmonization mappings from CSV."""
     data_path = Path(__file__).parent.parent / "data" / "harmonize-names.csv"
-    return pd.read_csv(
+    return pl.read_csv(
         data_path,
-        dtype={"franchise": "str", "name_harmonized": "str"},
+        schema_overrides={"franchise": pl.Utf8, "name_harmonized": pl.Utf8},
+        null_values="NA",
     )
 
 
@@ -48,15 +49,15 @@ def load_harmonize_map() -> pd.DataFrame:
 
 
 def match_to_fruns(
-    data: pd.DataFrame,
+    data: pl.DataFrame,
     name_col: str,
     method: Literal["both", "exact", "fuzzy"] = "both",
-    fruns_data: pd.DataFrame | None = None,
-    harmonize_map: pd.DataFrame | None = None,
+    fruns_data: pl.DataFrame | None = None,
+    harmonize_map: pl.DataFrame | None = None,
     max_distance: float = 0.10,
     verbose: bool = True,
     keep_details: bool = False,
-) -> pd.DataFrame:
+) -> pl.DataFrame:
     """Match franchise names to FRUNS identifiers.
 
     Args:
@@ -99,15 +100,15 @@ def match_to_fruns(
     # method == "both": exact first, then fuzzy for unmatched
     exact_matches = _find_exact_matches(prepared, fruns_data)
 
-    matched_ids = set(exact_matches["_row_id"])
-    unmatched = prepared[~prepared["_row_id"].isin(matched_ids)].copy()
+    matched_ids = set(exact_matches["_row_id"].to_list())
+    unmatched = prepared.filter(~pl.col("_row_id").is_in(matched_ids))
 
     if len(unmatched) == 0:
-        fuzzy_matches = pd.DataFrame()
+        fuzzy_matches = pl.DataFrame()
     else:
         fuzzy_matches = _match_fuzzy(unmatched, fruns_data, max_distance)
 
-    all_matches = pd.concat([exact_matches, fuzzy_matches], ignore_index=True)
+    all_matches = pl.concat([exact_matches, fuzzy_matches], how="diagonal_relaxed")
     result = _finalize_matches(prepared, all_matches, keep_details)
     if verbose:
         _print_summary(result, fuzzy_matches)
@@ -115,50 +116,59 @@ def match_to_fruns(
 
 
 def _prepare_input(
-    data: pd.DataFrame, name_col: str, harmonize_map: pd.DataFrame
-) -> pd.DataFrame:
+    data: pl.DataFrame, name_col: str, harmonize_map: pl.DataFrame
+) -> pl.DataFrame:
     """Step 1 & 2: Sanitize and harmonize input names."""
-    prepared = data.copy()
-    prepared["_row_id"] = range(len(prepared))
-    prepared["_name_sanitized"] = sanitize_name(prepared[name_col])
-    prepared["_name_harmonized"] = harmonize_name(
-        prepared["_name_sanitized"], harmonize_map
+    prepared = data.with_row_index("_row_id")
+    sanitized = sanitize_name(prepared[name_col])
+    harmonized = harmonize_name(sanitized, harmonize_map)
+    return prepared.with_columns(
+        sanitized.alias("_name_sanitized"),
+        harmonized.alias("_name_harmonized"),
     )
-    return prepared
 
 
 def _find_exact_matches(
-    data: pd.DataFrame, fruns_data: pd.DataFrame
-) -> pd.DataFrame:
+    data: pl.DataFrame, fruns_data: pl.DataFrame
+) -> pl.DataFrame:
     """Step 3a & 3b: Find exact matches on brand and franchisor names."""
-    # Filter out rows with NA/empty harmonized names (like R's na_matches = "never")
-    data_valid = data[data["_name_harmonized"].notna() & (data["_name_harmonized"] != "")]
+    # Filter out rows with null/empty harmonized names
+    data_valid = data.filter(
+        pl.col("_name_harmonized").is_not_null()
+        & (pl.col("_name_harmonized") != "")
+    )
 
     # Step 3a: Exact match on brand name
-    # Brand names should be unique in FRUNS - validate="m:1" errors if not
-    fruns_brand = fruns_data[["fruns", "brand_name_sanitized"]].dropna(subset=["brand_name_sanitized"])
-    fruns_brand = fruns_brand[fruns_brand["brand_name_sanitized"] != ""]
+    fruns_brand = (
+        fruns_data.select("fruns", "brand_name_sanitized")
+        .drop_nulls(subset=["brand_name_sanitized"])
+        .filter(pl.col("brand_name_sanitized") != "")
+    )
 
-    exact_brand = data_valid.merge(
+    # Validate m:1 - brand names should be unique in FRUNS
+    assert fruns_brand["brand_name_sanitized"].is_unique().all(), (
+        "brand_name_sanitized is not unique in FRUNS data"
+    )
+
+    exact_brand = data_valid.join(
         fruns_brand,
         left_on="_name_harmonized",
         right_on="brand_name_sanitized",
         how="inner",
-        validate="m:1",
-    )
-    exact_brand["match_type"] = "exact"
-    exact_brand = exact_brand.drop(columns=["brand_name_sanitized"])
+    ).with_columns(pl.lit("exact").alias("match_type"))
 
     # Step 3b: Exact match on franchisor name (for rows not matched by brand)
-    # Multiple brands may share a franchisor - handle explicitly
-    matched_ids = set(exact_brand["_row_id"])
-    unmatched = data_valid[~data_valid["_row_id"].isin(matched_ids)]
+    matched_ids = set(exact_brand["_row_id"].to_list())
+    unmatched = data_valid.filter(~pl.col("_row_id").is_in(matched_ids))
 
-    fruns_franchisor = fruns_data[["fruns", "franchisor_sanitized"]].dropna(subset=["franchisor_sanitized"])
-    fruns_franchisor = fruns_franchisor[fruns_franchisor["franchisor_sanitized"] != ""]
+    fruns_franchisor = (
+        fruns_data.select("fruns", "franchisor_sanitized")
+        .drop_nulls(subset=["franchisor_sanitized"])
+        .filter(pl.col("franchisor_sanitized") != "")
+    )
 
-    # Many-to-many merge to detect multiple matches
-    franchisor_joined = unmatched.merge(
+    # Many-to-many join to detect multiple matches
+    franchisor_joined = unmatched.join(
         fruns_franchisor,
         left_on="_name_harmonized",
         right_on="franchisor_sanitized",
@@ -169,46 +179,63 @@ def _find_exact_matches(
         return exact_brand
 
     # Count matches per row
-    match_counts = franchisor_joined.groupby("_row_id").size().reset_index(name="_n_matches")
-    franchisor_joined = franchisor_joined.merge(match_counts, on="_row_id", how="left")
+    match_counts = (
+        franchisor_joined.group_by("_row_id")
+        .len()
+        .rename({"len": "_n_matches"})
+    )
+    franchisor_joined = franchisor_joined.join(match_counts, on="_row_id", how="left")
 
     # Single franchisor matches - unambiguous
-    exact_franchisor = franchisor_joined[franchisor_joined["_n_matches"] == 1].copy()
-    exact_franchisor["match_type"] = "franchisor"
-    exact_franchisor = exact_franchisor.drop(columns=["franchisor_sanitized", "_n_matches"])
+    exact_franchisor = (
+        franchisor_joined.filter(pl.col("_n_matches") == 1)
+        .with_columns(pl.lit("franchisor").alias("match_type"))
+        .drop("_n_matches")
+    )
 
-    # Multiple franchisor matches - ambiguous, return NA with special match_type
-    # Get distinct row IDs that had multiple matches, then join back to input data
-    multiple_ids = franchisor_joined.loc[
-        franchisor_joined["_n_matches"] > 1, "_row_id"
-    ].unique()
-    franchisor_multiple = unmatched[unmatched["_row_id"].isin(multiple_ids)].copy()
-    franchisor_multiple["fruns"] = pd.NA
-    franchisor_multiple["match_type"] = "franchisor_multiple"
+    # Multiple franchisor matches - ambiguous, return null with special match_type
+    multiple_ids = (
+        franchisor_joined.filter(pl.col("_n_matches") > 1)
+        .select("_row_id")
+        .unique()
+    )
+    franchisor_multiple = (
+        unmatched.join(multiple_ids, on="_row_id", how="inner")
+        .with_columns(
+            pl.lit(None).cast(pl.Utf8).alias("fruns"),
+            pl.lit("franchisor_multiple").alias("match_type"),
+        )
+    )
 
-    return pd.concat([exact_brand, exact_franchisor, franchisor_multiple], ignore_index=True)
+    return pl.concat(
+        [exact_brand, exact_franchisor, franchisor_multiple],
+        how="diagonal_relaxed",
+    )
 
 
 def _match_fuzzy(
-    data: pd.DataFrame, fruns_data: pd.DataFrame, max_distance: float
-) -> pd.DataFrame:
+    data: pl.DataFrame, fruns_data: pl.DataFrame, max_distance: float
+) -> pl.DataFrame:
     """Step 3c: Find best fuzzy match via Jaro-Winkler distance.
 
     Uses rapidfuzz.process.extractOne for O(n) performance with C-optimized
-    string comparison, replacing the previous O(n×m) nested Python loop.
+    string comparison, replacing the previous O(n*m) nested Python loop.
     """
-    unique_input = data["_name_harmonized"].dropna().unique()
-    unique_brands = fruns_data["brand_name_sanitized"].dropna().unique().tolist()
+    unique_input = (
+        data["_name_harmonized"].drop_nulls().unique().to_list()
+    )
+    unique_brands = (
+        fruns_data["brand_name_sanitized"].drop_nulls().unique().to_list()
+    )
 
     # Filter empty strings
     unique_input = [name for name in unique_input if name]
     unique_brands = [brand for brand in unique_brands if brand]
 
     if not unique_input or not unique_brands:
-        return pd.DataFrame()
+        return pl.DataFrame()
 
     # Convert max_distance to minimum similarity score (extractOne uses similarity)
-    # JaroWinkler.similarity returns 0-1, so score_cutoff is also 0-1
     score_cutoff = 1 - max_distance
 
     # Find best match for each unique input name using optimized extractOne
@@ -224,7 +251,7 @@ def _match_fuzzy(
 
         if result is not None:
             best_brand, score, _ = result
-            distance = 1 - score  # Convert similarity back to distance
+            distance = 1 - score
 
             # Round to 4 decimal places for consistent comparison with R
             if round(distance, 4) <= max_distance:
@@ -237,91 +264,114 @@ def _match_fuzzy(
                 )
 
     if not best_matches:
-        return pd.DataFrame()
+        return pl.DataFrame()
 
-    matches_df = pd.DataFrame(best_matches)
+    matches_df = pl.DataFrame(best_matches)
 
     # Join to get FRUNS
-    matches_df = matches_df.merge(
-        fruns_data[["brand_name_sanitized", "fruns"]].drop_duplicates(),
+    fruns_lookup = (
+        fruns_data.select("brand_name_sanitized", "fruns")
+        .unique(subset=["brand_name_sanitized"])
+    )
+
+    # Validate m:1
+    assert fruns_lookup["brand_name_sanitized"].is_unique().all()
+
+    matches_df = matches_df.join(
+        fruns_lookup,
         left_on="_matched_brand",
         right_on="brand_name_sanitized",
         how="left",
-        validate="m:1",
-    ).drop(columns=["brand_name_sanitized"])
+    )
 
     # Join back to original data
-    result = data.merge(matches_df, on="_name_harmonized", how="inner")
-    result["match_type"] = result["_distance"].apply(lambda d: f"fuzzy_{d:.4f}")
+    result = data.join(matches_df, on="_name_harmonized", how="inner")
+    result = result.with_columns(
+        pl.col("_distance")
+        .map_elements(lambda d: f"fuzzy_{d:.4f}", return_dtype=pl.Utf8)
+        .alias("match_type")
+    )
 
     return result
 
 
 def _finalize_matches(
-    prepared: pd.DataFrame, matches: pd.DataFrame, keep_details: bool = False
-) -> pd.DataFrame:
+    prepared: pl.DataFrame, matches: pl.DataFrame, keep_details: bool = False
+) -> pl.DataFrame:
     """Join matches back to original data."""
     if keep_details:
         keep_cols = ["_row_id", "fruns", "match_type", "_matched_brand", "_distance"]
         available_cols = [c for c in keep_cols if c in matches.columns]
-        matches_subset = matches[available_cols].copy() if len(matches) > 0 else pd.DataFrame(columns=available_cols)
+        matches_subset = (
+            matches.select(available_cols) if len(matches) > 0
+            else pl.DataFrame(schema={c: pl.Utf8 for c in keep_cols})
+        )
 
-        result = prepared.merge(matches_subset, on="_row_id", how="left")
+        result = prepared.join(matches_subset, on="_row_id", how="left")
         # Rename internal columns (remove leading underscore)
         rename_map = {c: c[1:] for c in result.columns if c.startswith("_")}
-        result = result.rename(columns=rename_map)
+        result = result.rename(rename_map)
     else:
         cols = ["_row_id", "fruns", "match_type"]
         available_cols = [c for c in cols if c in matches.columns]
-        matches_subset = matches[available_cols].copy() if len(matches) > 0 else pd.DataFrame(columns=cols)
+        matches_subset = (
+            matches.select(available_cols) if len(matches) > 0
+            else pl.DataFrame(schema={c: pl.Utf8 for c in cols})
+        )
 
-        result = prepared.merge(matches_subset, on="_row_id", how="left")
+        result = prepared.join(matches_subset, on="_row_id", how="left")
         # Drop internal columns
         internal_cols = [c for c in result.columns if c.startswith("_")]
-        result = result.drop(columns=internal_cols)
+        result = result.drop(internal_cols)
 
     return result
 
 
 def _print_summary(
-    result: pd.DataFrame, fuzzy_matches: pd.DataFrame | None = None
+    result: pl.DataFrame, fuzzy_matches: pl.DataFrame | None = None
 ) -> None:
     """Print match summary to console."""
-    result = result.copy()
-    result["match_bucket"] = result["match_type"].apply(
-        lambda x: "unmatched"
-        if pd.isna(x)
-        else ("fuzzy" if str(x).startswith("fuzzy") else x)
+    match_bucket = (
+        pl.when(pl.col("match_type").is_null())
+        .then(pl.lit("unmatched"))
+        .when(pl.col("match_type").str.starts_with("fuzzy"))
+        .then(pl.lit("fuzzy"))
+        .otherwise(pl.col("match_type"))
     )
 
-    counts = result.groupby("match_bucket").size().reset_index(name="n")
-    counts["pct"] = counts["n"] / counts["n"].sum() * 100
+    counts = (
+        result.with_columns(match_bucket.alias("match_bucket"))
+        .group_by("match_bucket")
+        .len()
+        .rename({"len": "n"})
+        .with_columns((pl.col("n") / pl.col("n").sum() * 100).alias("pct"))
+    )
 
     total = len(result)
-    matched = counts[counts["match_bucket"] != "unmatched"]["n"].sum()
+    matched = counts.filter(pl.col("match_bucket") != "unmatched")["n"].sum()
 
-    print("\n── Match Summary ──")
-    print(f"{total} rows → {matched} matched ({matched/total*100:.1f}%)")
+    print("\n-- Match Summary --")
+    print(f"{total} rows -> {matched} matched ({matched/total*100:.1f}%)")
     print()
 
-    for _, row in counts.iterrows():
+    for row in counts.iter_rows(named=True):
         print(f"  {row['match_bucket']:<12} {row['n']:>6}  {row['pct']:>5.1f}%")
 
     if fuzzy_matches is not None and len(fuzzy_matches) > 0:
-        print("\n── Fuzzy Match Samples ──")
+        print("\n-- Fuzzy Match Samples --")
         sample = fuzzy_matches.sample(n=min(10, len(fuzzy_matches)))
-        sample = sample.sort_values("_distance")
+        sample = sample.sort("_distance")
 
-        for _, row in sample.iterrows():
+        for row in sample.iter_rows(named=True):
             name = str(row["_name_harmonized"])[:30].ljust(30)
             brand = str(row["_matched_brand"])[:30].ljust(30)
             dist = row["_distance"]
-            print(f"  {name}  →  {brand}  {dist:.3f}")
+            print(f"  {name}  ->  {brand}  {dist:.3f}")
 
 
 if __name__ == "__main__":
     # Example usage
-    test_data = pd.DataFrame(
+    test_data = pl.DataFrame(
         {
             "franchise_name": [
                 "McDonald's Franchising, Inc.",
@@ -333,5 +383,5 @@ if __name__ == "__main__":
     )
 
     result = match_to_fruns(test_data, "franchise_name", keep_details=True)
-    print("\n── Result ──")
+    print("\n-- Result --")
     print(result)
