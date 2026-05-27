@@ -1,5 +1,16 @@
 # franchise-fruns News
 
+## 2026-05-26
+
+### 412 name variants added to `harmonize-names.csv`
+
+Bulk addition of harmonization rules generated from unmatched names in
+the franchise-metadata pipeline. Mostly long-form FDD names with
+trailing descriptors, regional qualifiers, or multi-brand listings
+(e.g., "togos restaurant" to "togos", "jan pro northwest" to "jan pro
+cleaning disinfecting"). A smaller share are spelling variants and
+alias corrections.
+
 ## 2026-03-04
 
 ### New name mappings added to `harmonize-names.csv`
