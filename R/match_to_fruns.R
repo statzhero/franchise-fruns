@@ -13,7 +13,7 @@
 #' @param harmonize_map Harmonization mappings (defaults to package data)
 #' @param max_distance Maximum Jaro-Winkler distance for fuzzy matches (default 0.10)
 #' @param verbose Print match summary and sample fuzzy matches (default TRUE)
-#' @param keep_details Keep diagnostic columns: name_sanitized, name_harmonized, distance (default FALSE)
+#' @param keep_details Keep diagnostic columns: name_sanitized, match_key, fruns_name_sanitized, distance (default FALSE)
 #' @return Input data with `fruns` and `match_type` columns added
 
 source("R/normalize_franchise_names.R")
@@ -51,7 +51,7 @@ match_to_fruns <- function(
 
   if (method == "exact") {
     exact_matches <- find_exact_matches(prepared, fruns_data)
-    result <- finalize_matches(prepared, exact_matches, keep_details)
+    result <- finalize_matches(prepared, exact_matches, fruns_data, keep_details)
     if (verbose) {
       print_summary(result)
     }
@@ -60,7 +60,7 @@ match_to_fruns <- function(
 
   if (method == "fuzzy") {
     fuzzy_matches <- match_fuzzy(prepared, fruns_data, max_distance)
-    result <- finalize_matches(prepared, fuzzy_matches, keep_details)
+    result <- finalize_matches(prepared, fuzzy_matches, fruns_data, keep_details)
     if (verbose) {
       print_summary(result, fuzzy_matches)
     }
@@ -80,7 +80,7 @@ match_to_fruns <- function(
   }
 
   all_matches <- dplyr::bind_rows(exact_matches, fuzzy_matches)
-  result <- finalize_matches(prepared, all_matches, keep_details)
+  result <- finalize_matches(prepared, all_matches, fruns_data, keep_details)
   if (verbose) {
     print_summary(result, fuzzy_matches)
   }
@@ -99,7 +99,7 @@ match_to_fruns <- function(
 # generic terms from matching (e.g., "food" → NA prevents false positives).
 
 # Step 3: Matching -------------------------------------------------------------
-# Find the FRUNS ID using the harmonized name:
+# Find the FRUNS ID using the match key (the sanitized, harmonized name):
 #   - Exact (brand): match against brand_name_sanitized in FRUNS master
 #   - Exact (franchisor): if no brand match, try franchisor_sanitized
 #   - Fuzzy: if still unmatched, find closest brand via Jaro-Winkler (≤0.10)
@@ -111,7 +111,7 @@ prepare_input <- function(data, name_col, harmonize_map) {
     dplyr::mutate(
       .row_id = dplyr::row_number(),
       .name_sanitized = sanitize_name({{ name_col }}),
-      .name_harmonized = harmonize_name(.name_sanitized, harmonize_map)
+      .match_key = harmonize_name(.name_sanitized, harmonize_map)
     )
 }
 
@@ -121,7 +121,7 @@ find_exact_matches <- function(data, fruns_data) {
   exact_brand <- data |>
     dplyr::inner_join(
       fruns_data |> dplyr::select(fruns, brand_name_sanitized),
-      by = dplyr::join_by(.name_harmonized == brand_name_sanitized),
+      by = dplyr::join_by(.match_key == brand_name_sanitized),
       na_matches = "never",
       relationship = "many-to-one"
     ) |>
@@ -135,7 +135,7 @@ find_exact_matches <- function(data, fruns_data) {
   franchisor_joined <- unmatched_by_brand |>
     dplyr::inner_join(
       fruns_data |> dplyr::select(fruns, franchisor_sanitized),
-      by = dplyr::join_by(.name_harmonized == franchisor_sanitized),
+      by = dplyr::join_by(.match_key == franchisor_sanitized),
       na_matches = "never",
       relationship = "many-to-many"
     ) |>
@@ -163,20 +163,26 @@ find_exact_matches <- function(data, fruns_data) {
   dplyr::bind_rows(exact_brand, exact_franchisor, franchisor_multiple)
 }
 
-finalize_matches <- function(prepared, matches, keep_details = FALSE) {
+finalize_matches <- function(prepared, matches, fruns_data, keep_details = FALSE) {
   if (keep_details) {
     keep_cols <- c(
       ".row_id",
       "fruns",
       "match_type",
-      ".matched_brand",
       ".distance"
     )
     matches <- matches |>
       dplyr::select(dplyr::any_of(keep_cols))
 
+    # Canonical sanitized brand name of the matched fruns - unlike the match
+    # key, this is guaranteed unique per fruns for all match types
+    fruns_names <- fruns_data |>
+      dplyr::select(fruns, .fruns_name_sanitized = brand_name_sanitized)
+
     prepared |>
       dplyr::left_join(matches, by = dplyr::join_by(.row_id)) |>
+      dplyr::left_join(fruns_names, by = dplyr::join_by(fruns)) |>
+      dplyr::relocate(.fruns_name_sanitized, .after = match_type) |>
       dplyr::rename_with(
         \(x) stringr::str_remove(x, "^\\."),
         dplyr::starts_with(".")
@@ -225,7 +231,7 @@ print_summary <- function(result, fuzzy_matches = NULL) {
     cli::cli_h2("Fuzzy Match Samples")
     cli::cli_verbatim(sprintf(
       "  %-30.30s  \u2192  %-30.30s  %.3f",
-      samples$.name_harmonized,
+      samples$.match_key,
       samples$.matched_brand,
       samples$.distance
     ))
@@ -238,7 +244,7 @@ print_summary <- function(result, fuzzy_matches = NULL) {
 
 #' Find best fuzzy match for each unmatched name via Jaro-Winkler (≤0.10)
 match_fuzzy <- function(data, fruns_data, max_distance) {
-  unique_input <- unique(data$.name_harmonized)
+  unique_input <- unique(data$.match_key)
   unique_brands <- unique(fruns_data$brand_name_sanitized)
 
   # Find best match index directly (no full matrix needed)
@@ -257,12 +263,12 @@ match_fuzzy <- function(data, fruns_data, max_distance) {
 
   # Build matches for inputs that found something
   best_matches <- dplyr::tibble(
-    .name_harmonized = unique_input[has_match],
+    .match_key = unique_input[has_match],
     .matched_brand = unique_brands[best_idx[has_match]]
   ) |>
     dplyr::mutate(
       .distance = stringdist::stringdist(
-        .name_harmonized,
+        .match_key,
         .matched_brand,
         method = "jw",
         p = 0.1
@@ -275,6 +281,6 @@ match_fuzzy <- function(data, fruns_data, max_distance) {
       fruns_data |> dplyr::distinct(brand_name_sanitized, fruns),
       by = dplyr::join_by(.matched_brand == brand_name_sanitized)
     ) |>
-    dplyr::inner_join(data, by = dplyr::join_by(.name_harmonized)) |>
+    dplyr::inner_join(data, by = dplyr::join_by(.match_key)) |>
     dplyr::mutate(match_type = paste0("fuzzy_", round(.distance, 4)))
 }

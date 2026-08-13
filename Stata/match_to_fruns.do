@@ -61,10 +61,11 @@ program define match_to_fruns
     *!   match_type - exact | franchisor | franchisor_multiple | fuzzy_XXXX | (missing)
     *!
     *! If keep_details option specified, also keeps:
-    *!   name_sanitized  - Sanitized input name
-    *!   name_harmonized - After harmonization
-    *!   matched_brand   - Brand matched to (for fuzzy)
-    *!   distance        - Jaro-Winkler distance (for fuzzy)
+    *!   name_sanitized       - Sanitized input name
+    *!   match_key            - Name searched for (after harmonization)
+    *!   fruns_name_sanitized - Sanitized brand name of the matched fruns
+    *!                          (unique per fruns, filled for all match types)
+    *!   distance             - Jaro-Winkler distance (for fuzzy)
     *!
     *! Example:
     *!   use "mydata.dta", clear
@@ -118,7 +119,7 @@ program define match_to_fruns
 
         // Step 1 & 2: Sanitize and harmonize
         sanitize_name `varlist', gen(_name_sanitized)
-        harmonize_name _name_sanitized, gen(_name_harmonized) using("`harmonize'")
+        harmonize_name _name_sanitized, gen(_match_key) using("`harmonize'")
 
         // Load FRUNS data into frame
         frame create _fruns
@@ -129,11 +130,23 @@ program define match_to_fruns
             drop if missing(brand_name_sanitized) | brand_name_sanitized == ""
         }
 
+        // Save fruns -> sanitized brand name lookup now, before the matching
+        // steps modify the frame. Joined back at the end for keep_details.
+        if "`keep_details'" != "" {
+            frame copy _fruns _fruns_names_tmp
+            frame _fruns_names_tmp {
+                keep fruns brand_name_sanitized
+                rename brand_name_sanitized fruns_name_sanitized
+                tempfile fruns_names
+                save `fruns_names'
+            }
+            frame drop _fruns_names_tmp
+        }
+
         // Initialize result variables
         gen str20 fruns = ""
         gen str20 match_type = ""
         if "`keep_details'" != "" {
-            gen str100 _matched_brand = ""
             gen double _distance = .
         }
     }
@@ -144,9 +157,9 @@ program define match_to_fruns
         frame _fruns: save `fruns_brand'
 
         preserve
-        keep _row_id _name_harmonized
-        drop if missing(_name_harmonized) | _name_harmonized == ""
-        rename _name_harmonized brand_name_sanitized
+        keep _row_id _match_key
+        drop if missing(_match_key) | _match_key == ""
+        rename _match_key brand_name_sanitized
         merge m:1 brand_name_sanitized using `fruns_brand', ///
             assert(match master using) keep(match) nogenerate
         keep _row_id fruns
@@ -164,7 +177,10 @@ program define match_to_fruns
     // Step 3b: Exact match on franchisor (for unmatched)
     // Multiple brands may share a franchisor - handle explicitly
     quietly {
-        frame _fruns {
+        // Work on a copy: keep would otherwise strip brand_name_sanitized
+        // from the frame, which the fuzzy step still needs
+        frame copy _fruns _fruns_franchisor_tmp
+        frame _fruns_franchisor_tmp {
             keep fruns franchisor_sanitized
             drop if missing(franchisor_sanitized) | franchisor_sanitized == ""
             rename franchisor_sanitized _franchisor_key
@@ -172,12 +188,13 @@ program define match_to_fruns
             tempfile fruns_franchisor
             save `fruns_franchisor'
         }
+        frame drop _fruns_franchisor_tmp
 
         preserve
         keep if missing(fruns)
-        keep _row_id _name_harmonized
-        drop if missing(_name_harmonized) | _name_harmonized == ""
-        rename _name_harmonized _franchisor_key
+        keep _row_id _match_key
+        drop if missing(_match_key) | _match_key == ""
+        rename _match_key _franchisor_key
 
         // Many-to-many merge to detect multiple matches
         joinby _franchisor_key using `fruns_franchisor', unmatched(master)
@@ -220,12 +237,12 @@ program define match_to_fruns
             if "`method'" == "both" {
                 keep if missing(fruns)
             }
-            keep _row_id _name_harmonized
-            drop if missing(_name_harmonized) | _name_harmonized == ""
+            keep _row_id _match_key
+            drop if missing(_match_key) | _match_key == ""
 
             if _N > 0 {
                 // Prepare for matchit
-                rename _name_harmonized txtraw
+                rename _match_key txtraw
                 gen idmaster = _row_id
 
                 // Get unique brands from FRUNS (preserve for merge-back)
@@ -263,14 +280,13 @@ program define match_to_fruns
                 bysort idmaster (_distance): keep if _n == 1
 
                 // Merge back to get FRUNS using idusing (reliable key)
-                rename txtusing _matched_brand
                 merge m:1 idusing using `fruns_for_match', ///
                     assert(match using) keep(match) nogenerate keepusing(fruns)
 
                 // Prepare for merge back
                 rename idmaster _row_id
                 gen match_type = "fuzzy_" + string(_distance, "%6.4f")
-                keep _row_id fruns match_type _matched_brand _distance
+                keep _row_id fruns match_type _distance
                 tempfile fuzzy_matches
                 save `fuzzy_matches'
             }
@@ -281,12 +297,6 @@ program define match_to_fruns
             if !_rc {
                 merge 1:1 _row_id using `fuzzy_matches', ///
                     assert(match master) nogenerate update
-
-                if "`keep_details'" != "" {
-                    // Update detail columns from fuzzy match
-                    capture replace _matched_brand = _matched_brand if match_type != ""
-                    capture replace _distance = _distance if match_type != ""
-                }
             }
         }
     }
@@ -298,13 +308,16 @@ program define match_to_fruns
     quietly {
         if "`keep_details'" != "" {
             rename _name_sanitized name_sanitized
-            rename _name_harmonized name_harmonized
-            rename _matched_brand matched_brand
+            rename _match_key match_key
             rename _distance distance
+            // Canonical sanitized brand name of the matched fruns - unlike
+            // the match key, guaranteed unique per fruns for all match types
+            merge m:1 fruns using `fruns_names', keep(match master) nogenerate
+            order fruns_name_sanitized, after(match_type)
         }
         else {
-            drop _name_sanitized _name_harmonized
-            capture drop _matched_brand _distance
+            drop _name_sanitized _match_key
+            capture drop _distance
         }
         drop _row_id
     }

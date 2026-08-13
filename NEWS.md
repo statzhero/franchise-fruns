@@ -1,5 +1,34 @@
 # franchise-fruns News
 
+## 2026-08-13
+
+### Renamed diagnostic columns in `match_to_fruns()` output
+
+With `keep_details`, the matcher now returns `match_key` (formerly
+`name_harmonized`) and `fruns_name_sanitized` (formerly `matched_brand`,
+which was only filled for fuzzy matches). `fruns_name_sanitized` is the
+sanitized brand name of the matched franchise, filled for every
+successful match. Unlike the match key, it is guaranteed unique per
+FRUNS, so use it (or join `brand_name` from `fruns-master.csv` on
+`fruns`) when you need one standardized name per franchise. Column
+names in `harmonize-names.csv` are unchanged.
+
+### Stata: fixed fuzzy matching after the franchisor step
+
+The franchisor matching step modified the FRUNS frame in place and
+dropped the brand column that the fuzzy step needs. The step now works
+on a copy of the frame.
+
+### Fixes to `harmonize-names.csv`
+
+- Corrected `1 800 flowers i conroy s` to `1 800 flowers i conroys`.
+  The sanitizer removes apostrophes without leaving a space, so the old
+  key could never occur.
+- Removed a duplicate `ramada` row.
+- Added `pizza` as a blocked generic name. The README cites it as the
+  blocking example, but the row was missing, so "Pizza" fuzzy-matched
+  to "Pizza 9".
+
 ## 2026-05-26
 
 ### 412 name variants added to `harmonize-names.csv`

@@ -50,14 +50,14 @@ result <- match_to_fruns(franchises, franchise_name)
 # Suppress match summary and keep diagnostic columns
 match_to_fruns(franchises, franchise_name, verbose = FALSE, keep_details = TRUE)
 #> # A tibble: 5 × 8
-#>   franchise_name             name_sanitized   name_harmonized fruns   match_type
-#>   <chr>                      <chr>            <chr>           <chr>   <chr>
-#> 1 1-800-Flowers.com, Inc.    1 800 flowerscom 1 800 flowers   10012   exact
-#> 2 Conroy's                   conroys          1 800 flowers   10012   exact
-#> 3 McDonald Franchising, Inc. mcdonald         mcdonald        12321   fuzzy_0.0222
-#> 4 Gambinos Pizza             gambinos pizza   gambinos pizza  FN25002 exact
-#> 5 New Cool Franchise         new cool         new cool        NA      NA
-#> # ℹ 2 more variables: matched_brand <chr>, distance <dbl>
+#>   franchise_name             name_sanitized   match_key      fruns   match_type   fruns_name_sanitized
+#>   <chr>                      <chr>            <chr>          <chr>   <chr>        <chr>
+#> 1 1-800-Flowers.com, Inc.    1 800 flowerscom 1 800 flowers  10012   exact        1 800 flowers
+#> 2 Conroy's                   conroys          1 800 flowers  10012   exact        1 800 flowers
+#> 3 McDonald Franchising, Inc. mcdonald         mcdonald       12321   fuzzy_0.0222 mcdonalds
+#> 4 Gambinos Pizza             gambinos pizza   gambinos pizza FN25002 exact        gambinos pizza
+#> 5 New Cool Franchise         new cool         new cool       NA      NA           NA
+#> # ℹ 2 more variables: distance <dbl>, row_id <int>
 ```
 
 ### Python
@@ -134,7 +134,7 @@ The algorithm applies three steps:
 | `method` | `"both"` | `"exact"`, `"fuzzy"`, or `"both"` (exact first, then fuzzy) |
 | `max_distance` | `0.10` | Maximum Jaro-Winkler distance for fuzzy matches |
 | `verbose` | `TRUE` | Print match summary and sample fuzzy matches |
-| `keep_details` | `FALSE` | Return diagnostic columns (sanitized name, distance) |
+| `keep_details` | `FALSE` | Return diagnostic columns (see below) |
 
 ## Match types
 
@@ -145,6 +145,15 @@ The algorithm applies three steps:
 | `franchisor_multiple` | Multiple franchises share this franchisor (FRUNS = `NA`) |
 | `fuzzy_XXXX` | Fuzzy match with distance (e.g., `fuzzy_0.0312`) |
 | `NA` | No match found |
+
+## Diagnostic columns (`keep_details`)
+
+| Column | Description |
+|-------------------------------------|-----------------------------------|
+| `name_sanitized` | Input name after mechanical cleaning (lowercase, punctuation and suffixes removed) |
+| `match_key` | The name actually searched for: `name_sanitized` after applying `harmonize-names.csv`. Empty means the name was deliberately blocked as too generic. Not unique per FRUNS — several keys can resolve to the same franchise via brand, franchisor, or fuzzy matching. |
+| `fruns_name_sanitized` | Sanitized brand name of the matched franchise, from the FRUNS master. Unique per FRUNS and filled for every successful match — use this (or join `brand_name` on `fruns`) when you need one standardized name per franchise. |
+| `distance` | Jaro-Winkler distance (fuzzy matches only) |
 
 ## Data
 

@@ -71,7 +71,8 @@ def match_to_fruns(
         harmonize_map: Harmonization mappings (defaults to loading from data/).
         max_distance: Maximum Jaro-Winkler distance for fuzzy matches (default 0.10).
         verbose: Print match summary and sample fuzzy matches.
-        keep_details: Keep diagnostic columns (name_sanitized, name_harmonized, distance).
+        keep_details: Keep diagnostic columns (name_sanitized, match_key,
+            fruns_name_sanitized, distance).
 
     Returns:
         Input data with 'fruns' and 'match_type' columns added.
@@ -85,14 +86,14 @@ def match_to_fruns(
 
     if method == "exact":
         exact_matches = _find_exact_matches(prepared, fruns_data)
-        result = _finalize_matches(prepared, exact_matches, keep_details)
+        result = _finalize_matches(prepared, exact_matches, fruns_data, keep_details)
         if verbose:
             _print_summary(result)
         return result
 
     if method == "fuzzy":
         fuzzy_matches = _match_fuzzy(prepared, fruns_data, max_distance)
-        result = _finalize_matches(prepared, fuzzy_matches, keep_details)
+        result = _finalize_matches(prepared, fuzzy_matches, fruns_data, keep_details)
         if verbose:
             _print_summary(result, fuzzy_matches)
         return result
@@ -109,7 +110,7 @@ def match_to_fruns(
         fuzzy_matches = _match_fuzzy(unmatched, fruns_data, max_distance)
 
     all_matches = pl.concat([exact_matches, fuzzy_matches], how="diagonal_relaxed")
-    result = _finalize_matches(prepared, all_matches, keep_details)
+    result = _finalize_matches(prepared, all_matches, fruns_data, keep_details)
     if verbose:
         _print_summary(result, fuzzy_matches)
     return result
@@ -124,7 +125,7 @@ def _prepare_input(
     harmonized = harmonize_name(sanitized, harmonize_map)
     return prepared.with_columns(
         sanitized.alias("_name_sanitized"),
-        harmonized.alias("_name_harmonized"),
+        harmonized.alias("_match_key"),
     )
 
 
@@ -134,8 +135,8 @@ def _find_exact_matches(
     """Step 3a & 3b: Find exact matches on brand and franchisor names."""
     # Filter out rows with null/empty harmonized names
     data_valid = data.filter(
-        pl.col("_name_harmonized").is_not_null()
-        & (pl.col("_name_harmonized") != "")
+        pl.col("_match_key").is_not_null()
+        & (pl.col("_match_key") != "")
     )
 
     # Step 3a: Exact match on brand name
@@ -152,7 +153,7 @@ def _find_exact_matches(
 
     exact_brand = data_valid.join(
         fruns_brand,
-        left_on="_name_harmonized",
+        left_on="_match_key",
         right_on="brand_name_sanitized",
         how="inner",
     ).with_columns(pl.lit("exact").alias("match_type"))
@@ -170,7 +171,7 @@ def _find_exact_matches(
     # Many-to-many join to detect multiple matches
     franchisor_joined = unmatched.join(
         fruns_franchisor,
-        left_on="_name_harmonized",
+        left_on="_match_key",
         right_on="franchisor_sanitized",
         how="inner",
     )
@@ -222,7 +223,7 @@ def _match_fuzzy(
     string comparison, replacing the previous O(n*m) nested Python loop.
     """
     unique_input = (
-        data["_name_harmonized"].drop_nulls().unique().to_list()
+        data["_match_key"].drop_nulls().unique().to_list()
     )
     unique_brands = (
         fruns_data["brand_name_sanitized"].drop_nulls().unique().to_list()
@@ -257,7 +258,7 @@ def _match_fuzzy(
             if round(distance, 4) <= max_distance:
                 best_matches.append(
                     {
-                        "_name_harmonized": name,
+                        "_match_key": name,
                         "_matched_brand": best_brand,
                         "_distance": distance,
                     }
@@ -285,7 +286,7 @@ def _match_fuzzy(
     )
 
     # Join back to original data
-    result = data.join(matches_df, on="_name_harmonized", how="inner")
+    result = data.join(matches_df, on="_match_key", how="inner")
     result = result.with_columns(
         pl.col("_distance")
         .map_elements(lambda d: f"fuzzy_{d:.4f}", return_dtype=pl.Utf8)
@@ -296,11 +297,14 @@ def _match_fuzzy(
 
 
 def _finalize_matches(
-    prepared: pl.DataFrame, matches: pl.DataFrame, keep_details: bool = False
+    prepared: pl.DataFrame,
+    matches: pl.DataFrame,
+    fruns_data: pl.DataFrame,
+    keep_details: bool = False,
 ) -> pl.DataFrame:
     """Join matches back to original data."""
     if keep_details:
-        keep_cols = ["_row_id", "fruns", "match_type", "_matched_brand", "_distance"]
+        keep_cols = ["_row_id", "fruns", "match_type", "_distance"]
         available_cols = [c for c in keep_cols if c in matches.columns]
         matches_subset = (
             matches.select(available_cols) if len(matches) > 0
@@ -308,6 +312,21 @@ def _finalize_matches(
         )
 
         result = prepared.join(matches_subset, on="_row_id", how="left")
+
+        # Canonical sanitized brand name of the matched fruns - unlike the
+        # match key, this is guaranteed unique per fruns for all match types
+        fruns_names = fruns_data.select(
+            "fruns",
+            pl.col("brand_name_sanitized").alias("_fruns_name_sanitized"),
+        )
+        result = result.join(fruns_names, on="fruns", how="left")
+
+        # Place fruns_name_sanitized right after match_type
+        cols = result.columns
+        cols.remove("_fruns_name_sanitized")
+        cols.insert(cols.index("match_type") + 1, "_fruns_name_sanitized")
+        result = result.select(cols)
+
         # Rename internal columns (remove leading underscore)
         rename_map = {c: c[1:] for c in result.columns if c.startswith("_")}
         result = result.rename(rename_map)
@@ -363,7 +382,7 @@ def _print_summary(
         sample = sample.sort("_distance")
 
         for row in sample.iter_rows(named=True):
-            name = str(row["_name_harmonized"])[:30].ljust(30)
+            name = str(row["_match_key"])[:30].ljust(30)
             brand = str(row["_matched_brand"])[:30].ljust(30)
             dist = row["_distance"]
             print(f"  {name}  ->  {brand}  {dist:.3f}")
