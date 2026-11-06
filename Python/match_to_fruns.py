@@ -303,15 +303,25 @@ def _finalize_matches(
     keep_details: bool = False,
 ) -> pl.DataFrame:
     """Join matches back to original data."""
+    # Column types for an empty match set (no input row matched)
+    empty_schema = {
+        "_row_id": prepared.schema["_row_id"],
+        "fruns": pl.String,
+        "match_type": pl.String,
+        "_distance": pl.Float64,
+    }
+
     if keep_details:
         keep_cols = ["_row_id", "fruns", "match_type", "_distance"]
         available_cols = [c for c in keep_cols if c in matches.columns]
         matches_subset = (
             matches.select(available_cols) if len(matches) > 0
-            else pl.DataFrame(schema={c: pl.Utf8 for c in keep_cols})
+            else pl.DataFrame(schema={c: empty_schema[c] for c in keep_cols})
         )
 
-        result = prepared.join(matches_subset, on="_row_id", how="left")
+        result = prepared.join(
+            matches_subset, on="_row_id", how="left", maintain_order="left"
+        )
 
         # Canonical sanitized brand name of the matched fruns - unlike the
         # match key, this is guaranteed unique per fruns for all match types
@@ -319,7 +329,9 @@ def _finalize_matches(
             "fruns",
             pl.col("brand_name_sanitized").alias("_fruns_name_sanitized"),
         )
-        result = result.join(fruns_names, on="fruns", how="left")
+        result = result.join(
+            fruns_names, on="fruns", how="left", maintain_order="left"
+        )
 
         # Place fruns_name_sanitized right after match_type
         cols = result.columns
@@ -335,10 +347,12 @@ def _finalize_matches(
         available_cols = [c for c in cols if c in matches.columns]
         matches_subset = (
             matches.select(available_cols) if len(matches) > 0
-            else pl.DataFrame(schema={c: pl.Utf8 for c in cols})
+            else pl.DataFrame(schema={c: empty_schema[c] for c in cols})
         )
 
-        result = prepared.join(matches_subset, on="_row_id", how="left")
+        result = prepared.join(
+            matches_subset, on="_row_id", how="left", maintain_order="left"
+        )
         # Drop internal columns
         internal_cols = [c for c in result.columns if c.startswith("_")]
         result = result.drop(internal_cols)

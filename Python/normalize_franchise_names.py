@@ -11,12 +11,13 @@ Sanitization pipeline:
 6. Remove stopwords and trailing suffixes (corp, franchise, org, geo)
 7. Restore terms if result too short
 8. Strip leading "the" only if result > min_chars (preserves short brand names)
+
+All steps except 7 run as native polars string expressions (Rust regex).
 """
 
 from __future__ import annotations
 
 import re
-import unicodedata
 
 import polars as pl
 
@@ -37,23 +38,12 @@ RESTORE_ORDER = ["franchise", "org", "geo", "corp"]
 
 # Characters that NFD decomposition does not handle (ø → o, ß → ss, etc.)
 # Matches R's stringi::stri_trans_general("Latin-ASCII") and Stata's ustrto(, "ascii", 2)
-_TRANSLITERATE_MAP = str.maketrans(
-    {
-        "æ": "ae", "Æ": "AE", "œ": "oe", "Œ": "OE",
-        "ø": "o", "Ø": "O", "ß": "ss", "đ": "d", "Đ": "D",
-        "ł": "l", "Ł": "L", "þ": "th", "Þ": "TH",
-        "ð": "d", "Ð": "D",
-    }
-)
-
-
-def _transliterate_to_ascii(text: str) -> str:
-    """Transliterate accented characters to ASCII (café → cafe, häagen → haagen)."""
-    # First handle special ligatures/letters that NFD cannot decompose
-    text = text.translate(_TRANSLITERATE_MAP)
-    # Then decompose remaining accented chars and strip combining marks
-    normalized = unicodedata.normalize("NFD", text)
-    return "".join(c for c in normalized if unicodedata.category(c) != "Mn")
+_TRANSLITERATE_MAP = {
+    "æ": "ae", "Æ": "AE", "œ": "oe", "Œ": "OE",
+    "ø": "o", "Ø": "O", "ß": "ss", "đ": "d", "Đ": "D",
+    "ł": "l", "Ł": "L", "þ": "th", "Þ": "TH",
+    "ð": "d", "Ð": "D",
+}
 
 
 def sanitize_name(x: str | pl.Series, min_chars: int = 4) -> str | pl.Series:
@@ -67,58 +57,73 @@ def sanitize_name(x: str | pl.Series, min_chars: int = 4) -> str | pl.Series:
         Sanitized string(s) with normalized whitespace and removed suffixes.
     """
     if isinstance(x, pl.Series):
-        return x.map_elements(
-            lambda val: _sanitize_single(val, min_chars), return_dtype=pl.Utf8
-        ).fill_null("")
-    return _sanitize_single(x, min_chars)
+        return _sanitize_series(x, min_chars)
+    return _sanitize_series(pl.Series([x]), min_chars).item()
 
 
-def _sanitize_single(x: str | None, min_chars: int = 4) -> str:
-    """Sanitize a single string value."""
-    if x is None:
-        return ""
-
-    x = str(x)
-    x = x.lower()
-
-    # Remove special symbols before transliteration (® → (R) is unwanted)
-    x = re.sub(r"[®™©℠ªº°]", "", x)
-
-    # Transliterate accented characters to ASCII (café → cafe, häagen → haagen)
-    x = _transliterate_to_ascii(x)
-
-    # Remove apostrophe variants and joining punctuation (no space left behind)
-    x = x.replace("@", "at")
-    x = re.sub(r"['\u2018\u2019\u201A\u201B\u02BC\u02B9`\u00B4,.]", "", x)
-
-    # Other non-alphanumeric characters become spaces
-    x = re.sub(r"[^a-zA-Z0-9]", " ", x)
-    x = re.sub(r"\s+", " ", x).strip()
-
-    normalized = x
-    normalized_len = len(normalized)
+def _sanitize_series(x: pl.Series, min_chars: int) -> pl.Series:
+    """Sanitize a Series of names."""
+    normalized = _squish(
+        x.cast(pl.String)
+        .fill_null("")
+        .str.to_lowercase()
+        # Remove special symbols before transliteration (® → (R) is unwanted)
+        .str.replace_all(r"[®™©℠ªº°]", "")
+        # Transliterate accented characters to ASCII (café → cafe, häagen → haagen):
+        # first letters that NFD cannot decompose, then strip combining marks
+        .str.replace_many(_TRANSLITERATE_MAP)
+        .str.normalize("NFD")
+        .str.replace_all(r"\p{Mn}", "")
+        # Remove apostrophe variants and joining punctuation (no space left behind)
+        .str.replace_all("@", "at", literal=True)
+        .str.replace_all(r"['‘’‚‛ʼʹ`´,.]", "")
+        # Other non-alphanumeric characters become spaces
+        .str.replace_all(r"[^a-zA-Z0-9]", " ")
+    )
 
     # Remove terms in order (trailing patterns run until no more matches)
+    result = normalized
     for pattern in TERM_PATTERNS.values():
         while True:
-            new_x = re.sub(pattern, "", x).strip()
-            new_x = re.sub(r"\s+", " ", new_x).strip()
-            if new_x == x:
+            removed = _squish(result.str.replace_all(pattern, ""))
+            if removed.equals(result):
                 break
-            x = new_x
+            result = removed
 
-    # Restore terms if result too short but source was long enough
-    if min_chars > 0 and len(x) < min_chars and normalized_len >= min_chars:
-        x = _restore_until_min_chars(normalized, x, min_chars)
+    # Restore terms if result too short but source was long enough. Few names
+    # qualify, so these rows go through the per-string Python version.
+    if min_chars > 0:
+        too_short = (result.str.len_chars() < min_chars) & (
+            normalized.str.len_chars() >= min_chars
+        )
+        idx = too_short.arg_true()
+        if len(idx) > 0:
+            restored = [
+                _restore_until_min_chars(n, r, min_chars)
+                for n, r in zip(
+                    normalized.gather(idx), result.gather(idx), strict=True
+                )
+            ]
+            result = result.scatter(idx, restored)
 
     # Strip leading "the " only if remaining result > min_chars
     # Preserves "the" for short names (e.g., "the now") but removes from longer ones
-    if x.startswith("the "):
-        without_the = x[4:]
-        if len(without_the) > min_chars:
-            x = without_the
+    s = pl.col("s")
+    return (
+        result.to_frame("s")
+        .select(
+            pl.when(s.str.starts_with("the ") & (s.str.len_chars() - 4 > min_chars))
+            .then(s.str.slice(4))
+            .otherwise(s)
+        )
+        .to_series()
+        .alias(x.name)
+    )
 
-    return x
+
+def _squish(x: pl.Series) -> pl.Series:
+    """Collapse whitespace runs to a single space and trim both ends."""
+    return x.str.replace_all(r"\s+", " ").str.strip_chars()
 
 
 def _restore_until_min_chars(normalized: str, current: str, min_chars: int) -> str:
@@ -165,12 +170,11 @@ def harmonize_name(
             strict=True,
         )
     )
+    # A null key would otherwise map null inputs, which must stay null
+    lookup.pop(None, None)
 
     if isinstance(x, pl.Series):
-        return x.map_elements(
-            lambda v: lookup.get(v, v) if v is not None else v,
-            return_dtype=pl.Utf8,
-        )
+        return x.replace(lookup)
     if x is None:
         return x
     return lookup.get(x, x)

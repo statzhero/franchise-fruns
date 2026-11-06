@@ -1,5 +1,16 @@
 # franchise-fruns News
 
+## 2026-11-06
+
+### Python: polars 2.1 and native string processing
+
+The Python package now requires polars 2.1 or later, which needs
+Python 3.11 or later. `sanitize_name()` and `harmonize_name()` run as
+polars string expressions on its Rust regex engine instead of calling
+Python per row, which makes sanitizing about three times faster. The
+output is unchanged. The step that restores removed terms for very
+short names still runs in Python, on those rows only.
+
 ## 2026-08-13
 
 ### Renamed diagnostic columns in `match_to_fruns()` output
