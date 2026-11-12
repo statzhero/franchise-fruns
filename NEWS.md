@@ -1,5 +1,30 @@
 # franchise-fruns News
 
+## 2026-11-12
+
+### New and corrected entries in `harmonize-names.csv`
+
+Based on a review: `data/harmonize-names.csv` now has 102 new entries and 7
+corrections:
+
+- Corrected targets: `sweetwaters` (now Sweetwaters Coffee & Tea),
+  `jakes wayback burgers` (now Wayback Burgers), `jump zone` (now
+  Jump!Zone), `freshway` (now Freshway Food Systems), `growler` (now
+  Growler USA), `apex network` (now ApexNetwork Physical Therapy), and
+  `fresh asian grill` (a Teriyaki Madness tagline, now NA).
+- Trade names that extend a FRUNS brand ("Jabz Boxing Fitness For Women",
+  "Taco John's Restaurant") or shorten it ("OHM", "Handel's", "BGR",
+  "Best Western", "Miss USA").
+- Same franchisor, different trade name ("ERA Group", "Villa Italian
+  Kitchen", "KINGS ROAD COFFEE", "800-Carinsurance").
+- Fuzzy matches that were wrong, redirected ("Honest1", "Matto Espresso",
+  "Coles Bakery & Café", "Rainbow Restoration", "TA Express") or blocked
+  with NA ("SUSHI BOX", "PickleRage", "Soccer 5", "CareDiem Home Care").
+- Fuzzy matches that were right, made exact ("Comfort Inn", "Roly Poly
+  Rolled Sandwiches", "Delta Hotel").
+
+`tests/test_match_cases.py` holds regression tests for these cases.
+
 ## 2026-11-06
 
 ### Python: polars 2.1 and native string processing
