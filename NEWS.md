@@ -1,5 +1,13 @@
 # franchise-fruns News
 
+## 2026-11-13
+
+### Sanitizer: an ellipsis now separates words
+
+"The Joint...The Chiropractic Place" now sanitizes to "joint the
+chiropractic place" instead of "jointthe chiropractic place", in R,
+Python and Stata.
+
 ## 2026-11-12
 
 ### New and corrected entries in `harmonize-names.csv`

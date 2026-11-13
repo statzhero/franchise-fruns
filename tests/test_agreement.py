@@ -37,6 +37,7 @@ SANITIZE_INPUTS = [
     "SOME UPPER CASE LLC",
     "Ørsted Energy",
     "naïve café résumé",
+    "The Joint...The Chiropractic Place",
 ]
 
 HARMONIZE_INPUTS = [

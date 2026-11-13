@@ -36,6 +36,9 @@ from normalize_franchise_names import harmonize_name, sanitize_name
         ("Acme USA", "acme"),
         # @ -> at
         ("Chicken@Home", "chickenathome"),
+        # Ellipsis separates words; single dots still join
+        ("The Joint...The Chiropractic Place", "joint the chiropractic place"),
+        ("1-800-Flowers.com", "1 800 flowerscom"),
         # Leading "the" stripped when result > min_chars
         ("The Great Franchise", "great"),
         # Special symbols removed

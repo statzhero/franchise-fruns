@@ -39,6 +39,8 @@ sanitize_name <- function(x, min_chars = 4) {
 
   # Remove apostrophe variants and joining punctuation (no space left behind)
   x <- stringr::str_replace_all(x, "@", "at")
+  # A run of dots is an ellipsis between words, so it becomes a space first
+  x <- stringr::str_replace_all(x, "\\.{2,}", " ")
   x <- stringr::str_remove_all(x, "['\u2018\u2019\u201A\u201B\u02BC\u02B9`\u00B4,.]")
 
   # Other non-alphanumeric characters become spaces

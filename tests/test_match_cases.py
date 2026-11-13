@@ -53,6 +53,8 @@ CASES = [
     ("CareDiem Home Care", None),                 # was CareMinders
     ("PickleRage", None),                         # was Picklr
     ("Soccer 5", None),                           # was Soccer6
+    # sanitizer: ellipsis separates words
+    ("The Joint...The Chiropractic Place", "13872"),
 ]
 
 

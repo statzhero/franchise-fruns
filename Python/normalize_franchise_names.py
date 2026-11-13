@@ -76,6 +76,9 @@ def _sanitize_series(x: pl.Series, min_chars: int) -> pl.Series:
         .str.replace_all(r"\p{Mn}", "")
         # Remove apostrophe variants and joining punctuation (no space left behind)
         .str.replace_all("@", "at", literal=True)
+        # A run of dots is an ellipsis between words ("The Joint...The
+        # Chiropractic Place"), so it becomes a space before single dots are joined
+        .str.replace_all(r"\.{2,}", " ")
         .str.replace_all(r"['‘’‚‛ʼʹ`´,.]", "")
         # Other non-alphanumeric characters become spaces
         .str.replace_all(r"[^a-zA-Z0-9]", " ")

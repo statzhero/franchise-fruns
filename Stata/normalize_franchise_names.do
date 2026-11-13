@@ -48,6 +48,8 @@ program define sanitize_name
 
         // Character substitutions (join across, no space added)
         replace `generate' = subinstr(`generate', "@", "at", .)
+        // A run of dots is an ellipsis between words, so it becomes a space first
+        replace `generate' = ustrregexra(`generate', "\.{2,}", " ")
         replace `generate' = ustrregexra(`generate', "['\u2018\u2019\u201A\u201B\u02BC\u02B9`\u00B4,.]", "")
 
         // Other non-alphanumeric characters become spaces
