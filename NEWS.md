@@ -2,6 +2,17 @@
 
 ## 2026-11-13
 
+### Long trade names in `harmonize-names.csv`
+
+`data/harmonize-names.csv` has 138 new entries for trade names longer
+than the FRUNS brand, such as "SIZZLER Restaurant" or "Kentucky Fried
+Chicken". Three were fuzzy false
+positives before, such as "International House of Pancakes" matching
+International Tours. Two old targets are corrected: `itan salon` (now
+iTAN Sun Spray Spa, was The Man Salon) and `sweetfrog premium frozen
+yogurt` (now sweetFrog, was SweetDuet). `tests/test_match_cases.py` has
+twelve new cases.
+
 ### Sanitizer: an ellipsis now separates words
 
 "The Joint...The Chiropractic Place" now sanitizes to "joint the

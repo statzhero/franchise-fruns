@@ -53,6 +53,20 @@ CASES = [
     ("CareDiem Home Care", None),                 # was CareMinders
     ("PickleRage", None),                         # was Picklr
     ("Soccer 5", None),                           # was Soccer6
+    # long trade names from the full re-OCR run (2026-11-13)
+    ("International House of Pancakes", "11858"),
+    ("American Consumer Financial Network", "10081"),
+    ("Kentucky Fried Chicken", "12056"),
+    ("the country's best yogurt", "13792"),
+    ("Fabric Restoration Service Team", "11516"),
+    ("SIZZLER Restaurant", "13473"),
+    ("Culver's Restaurant", "11023"),
+    ("My Favorite Muffin Gourmet Muffin Bakery", "12483"),
+    ("Vitality Bowls Superfood Café", "15727"),
+    # harmonize targets corrected (2026-11-13)
+    ("iTAN Salon", "11917"),                      # was The Man Salon
+    ("sweetFrog premium frozen yogurt", "14785"), # was SweetDuet
+    ("Element Hotel", "11250"),
     # sanitizer: ellipsis separates words
     ("The Joint...The Chiropractic Place", "13872"),
 ]
